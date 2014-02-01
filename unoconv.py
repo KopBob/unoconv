@@ -35,6 +35,7 @@ global convertor, office, ooproc, product
 ooproc = None
 exitcode = 0
 
+
 class Office:
     def __init__(self, basepath, urepath, unopath, pyuno, binary, python, pythonhome):
         self.basepath = basepath
@@ -1019,6 +1020,7 @@ def info(level, msg):
 
 def die(ret, msg=None):
     "Print optional error and exit with errorcode"
+
     global convertor, ooproc, office
 
     if msg:
@@ -1071,7 +1073,11 @@ def die(ret, msg=None):
     # which avoids random segmentation faults --vpa
     convertor = None
 
-    sys.exit(ret)
+    if ret == 0:
+        return (True, ret)
+    else: 
+        return (False, ret)
+
 
 def main():
     global convertor, exitcode
@@ -1099,68 +1105,67 @@ def main():
     except OSError:
         error("Warning: failed to launch Office suite. Aborting.")
 
+# op = Options(["-h"])
+
 ### Main entrance
-if __name__ == '__main__':
-    exitcode = 0
+# if __name__ == '__main__':
+exitcode = 0
 
-    info(3, 'sysname=%s, platform=%s, python=%s, python-version=%s' % (os.name, sys.platform, sys.executable, sys.version))
 
-    for of in find_offices():
-        if of.python != sys.executable and not sys.executable.startswith(of.basepath):
-            python_switch(of)
-        office_environ(of)
-#        debug_office()
-        try:
-            import uno, unohelper
-            office = of
-            break
-        except:
-#            debug_office()
-            print("unoconv: Cannot find a suitable pyuno library and python binary combination in %s" % of, file=sys.stderr)
-            print("ERROR:", sys.exc_info()[1], file=sys.stderr)
-            print(file=sys.stderr)
-    else:
-#        debug_office()
-        print("unoconv: Cannot find a suitable office installation on your system.", file=sys.stderr)
-        print("ERROR: Please locate your office installation and send your feedback to:", file=sys.stderr)
-        print("       http://github.com/dagwieers/unoconv/issues", file=sys.stderr)
-        sys.exit(1)
+info(3, 'sysname=%s, platform=%s, python=%s, python-version=%s' % (os.name, sys.platform, sys.executable, sys.version))
 
-    ### Now that we have found a working pyuno library, let's import some classes
-    from com.sun.star.beans import PropertyValue
-    from com.sun.star.connection import NoConnectException
-    from com.sun.star.document.UpdateDocMode import QUIET_UPDATE
-    from com.sun.star.lang import DisposedException, IllegalArgumentException
-    from com.sun.star.io import IOException, XOutputStream
-    from com.sun.star.script import CannotConvertException
-    from com.sun.star.uno import Exception as UnoException
-    from com.sun.star.uno import RuntimeException
+for of in find_offices():
+    if of.python != sys.executable and not sys.executable.startswith(of.basepath):
+        python_switch(of)
+    office_environ(of)
+    try:
+        import uno, unohelper
+        office = of
+        break
+    except:
+        print("unoconv: Cannot find a suitable pyuno library and python binary combination in %s" % of, file=sys.stderr)
+        print("ERROR:", sys.exc_info()[1], file=sys.stderr)
+        print(file=sys.stderr)
+else:
+    print("unoconv: Cannot find a suitable office installation on your system.", file=sys.stderr)
+    print("ERROR: Please locate your office installation and send your feedback to:", file=sys.stderr)
+    print("       http://github.com/dagwieers/unoconv/issues", file=sys.stderr)
+    sys.exit(1)
 
-    ### And now that we have those classes, build on them
-    class OutputStream( unohelper.Base, XOutputStream ):
-        def __init__( self ):
-            self.closed = 0
+### Now that we have found a working pyuno library, let's import some classes
+from com.sun.star.beans import PropertyValue
+from com.sun.star.connection import NoConnectException
+from com.sun.star.document.UpdateDocMode import QUIET_UPDATE
+from com.sun.star.lang import DisposedException, IllegalArgumentException
+from com.sun.star.io import IOException, XOutputStream
+from com.sun.star.script import CannotConvertException
+from com.sun.star.uno import Exception as UnoException
+from com.sun.star.uno import RuntimeException
 
-        def closeOutput(self):
-            self.closed = 1
+### And now that we have those classes, build on them
+class OutputStream( unohelper.Base, XOutputStream ):
+    def __init__( self ):
+        self.closed = 0
 
-        def writeBytes( self, seq ):
-            sys.stdout.buffer.write( seq.value )
+    def closeOutput(self):
+        self.closed = 1
 
-        def flush( self ):
-            pass
+    def writeBytes( self, seq ):
+        sys.stdout.buffer.write( seq.value )
 
-    def UnoProps(**args):
-        props = []
-        for key in args:
-            prop = PropertyValue()
-            prop.Name = key
-            prop.Value = args[key]
-            props.append(prop)
-        return tuple(props)
+    def flush( self ):
+        pass
 
-    op = Options(sys.argv[1:])
+def UnoProps(**args):
+    props = []
+    for key in args:
+        prop = PropertyValue()
+        prop.Name = key
+        prop.Value = args[key]
+        props.append(prop)
+    return tuple(props)
 
+def run():
     info(2, "Using office base path: %s" % office.basepath)
     info(2, "Using office binary path: %s" % office.unopath)
 
@@ -1168,4 +1173,4 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt as e:
         die(6, 'Exiting on user request')
-    die(exitcode)
+    return die(exitcode)
