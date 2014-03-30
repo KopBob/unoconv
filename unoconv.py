@@ -1130,7 +1130,8 @@ else:
     print("unoconv: Cannot find a suitable office installation on your system.", file=sys.stderr)
     print("ERROR: Please locate your office installation and send your feedback to:", file=sys.stderr)
     print("       http://github.com/dagwieers/unoconv/issues", file=sys.stderr)
-    sys.exit(1)
+    raise Exception("Cannot find a suitable office installation!")
+    # sys.exit(1)
 
 ### Now that we have found a working pyuno library, let's import some classes
 from com.sun.star.beans import PropertyValue
